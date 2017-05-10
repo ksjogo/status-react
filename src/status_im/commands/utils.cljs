@@ -2,6 +2,7 @@
   (:require [clojure.set :as set]
             [clojure.walk :as w]
             [status-im.components.react :refer [text
+                                                text-input
                                                 scroll-view
                                                 view
                                                 slider
@@ -10,6 +11,7 @@
                                                 touchable-highlight]]
             [status-im.chat.views.input.web-view :as chat-web-view]
             [status-im.chat.views.input.validation-messages :as chat-validation-messages]
+            [status-im.chat.views.choosers.choose-contact :as choose-contact]
             [re-frame.core :refer [dispatch trim-v debug]]
             [status-im.utils.handlers :refer [register-handler]]
             [taoensso.timbre :as log]))
@@ -20,6 +22,7 @@
 
 (def elements
   {:text               text
+   :input              text-input
    :view               view
    :slider             slider
    :scroll-view        scroll-view
@@ -27,7 +30,8 @@
    :image              image
    :touchable          touchable-highlight
    :bridged-web-view   chat-web-view/bridged-web-view
-   :validation-message chat-validation-messages/validation-message})
+   :validation-message chat-validation-messages/validation-message
+   :choose-contact     choose-contact/choose-contact-view})
 
 (defn get-element [n]
   (elements (keyword (.toLowerCase n))))

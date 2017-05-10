@@ -106,11 +106,14 @@
                                                (.-contentSize)
                                                (.-height))]
                                      (set-layout-height h)))
-        :on-selection-change    #(let [s (-> (.-nativeEvent %)
-                                             (.-selection))]
-                                   (when (and (= (.-end s) (+ 2 (count (get-in @command [:command :name]))))
+        :on-selection-change    #(let [s   (-> (.-nativeEvent %)
+                                               (.-selection))
+                                       end (.-end s)]
+                                   (when (and (= end (+ 2 (count (get-in @command [:command :name]))))
                                               (get-in @command [:command :sequential-params]))
-                                     (dispatch [:chat-input-focus :seq-input-ref])))
+                                     (dispatch [:chat-input-focus :seq-input-ref]))
+                                   (dispatch [:set-chat-ui-props {:selection end}])
+                                   (dispatch [:load-chat-parameter-box (:command @command)]))
         :style                  (style/input-view height single-line-input?)
         :placeholder-text-color style/color-input-helper-placeholder
         :auto-capitalize        :sentences}])))

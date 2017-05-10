@@ -60,7 +60,7 @@ function validateSend(params, context) {
     }
 }
 
-function sendTransaction(params, context) {
+function handleSend(params, context) {
     var data = {
         from: context.from,
         to: context.to,
@@ -74,17 +74,199 @@ function sendTransaction(params, context) {
     }
 }
 
+function round(n) {
+    return Math.round(n * 100) / 100;
+}
+
+function amountParameterBox(params, context) {
+    /*var balance = parseFloat(web3.fromWei(web3.eth.getBalance(context.from), "ether"));
+    var defaultSliderValue = balance / 2;*/
+
+    //var gasPrice = web3.eth.gasPrice();
+
+    status.defineSubscription(
+        "roundedValue",
+        {value: ["sliderValue"]},
+        function (params) {
+            return round(params.value);
+        }
+    );
+
+    status.setDefaultDb({
+        sliderValue: 10
+    });
+
+    return {
+        title: "Send transaction",
+        showBack: true,
+        markup: status.components.view(
+            {
+                flex: 1
+            },
+            [
+                status.components.text(
+                    {
+                        style: {
+                            fontSize: 14,
+                            color: "rgb(147, 155, 161)",
+                            paddingTop: 12,
+                            paddingLeft: 16,
+                            paddingRight: 16,
+                            paddingBottom: 12
+                        }
+                    },
+                    "Specify amount"
+                ),
+                status.components.view(
+                    {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        textAlign: "center",
+                        justifyContent: "center"
+                    },
+                    [
+                        status.components.text(
+                            {
+                                font: "light",
+                                style: {
+                                    fontSize: 38,
+                                    marginLeft: 8,
+                                    color: "black"
+                                }
+                            },
+                            "2.00"
+                        ),
+                        status.components.text(
+                            {
+                                font: "light",
+                                style: {
+                                    fontSize: 38,
+                                    marginLeft: 8,
+                                    color: "rgb(147, 155, 161)"
+                                }
+                            },
+                            "ETH"
+                        ),
+                    ]
+                ),
+                status.components.text(
+                    {
+                        style: {
+                            fontSize: 14,
+                            color: "rgb(147, 155, 161)",
+                            paddingTop: 16,
+                            paddingLeft: 16,
+                            paddingRight: 16,
+                            paddingBottom: 8
+                        }
+                    },
+                    "Fee"
+                ),
+                status.components.view(
+                    {
+                        flexDirection: "row"
+                    },
+                    [
+                        status.components.text(
+                            {
+                                style: {
+                                    fontSize: 14,
+                                    color: "black",
+                                    paddingLeft: 16
+                                }
+                            },
+                            "0.05"
+                        ),
+                        status.components.text(
+                            {
+                                style: {
+                                    fontSize: 14,
+                                    color: "rgb(147, 155, 161)",
+                                    paddingLeft: 4,
+                                    paddingRight: 4
+                                }
+                            },
+                            "ETH"
+                        )
+                    ]
+                ),
+                status.components.slider(
+                    {
+                        maximumValue: 20,
+                        value: 10,
+                        minimumValue: 0,
+                        onSlidingComplete: status.components.dispatch(
+                            [status.events.UPDATE_DB, "sliderValue"]
+                        ),
+                        step: 0.05,
+                        style: {
+                            marginLeft: 16,
+                            marginRight: 16
+                        }
+                    }
+                ),
+                status.components.view(
+                    {
+                        flexDirection: "row"
+                    },
+                    [
+                        status.components.text(
+                            {
+                                style: {
+                                    flex: 1,
+                                    fontSize: 14,
+                                    color: "rgb(147, 155, 161)",
+                                    paddingLeft: 16,
+                                    alignSelf: "flex-start"
+                                }
+                            },
+                            "Cheaper"
+                        ),
+                        status.components.text(
+                            {
+                                style: {
+                                    flex: 1,
+                                    fontSize: 14,
+                                    color: "rgb(147, 155, 161)",
+                                    paddingRight: 16,
+                                    alignSelf: "flex-end",
+                                    textAlign: "right"
+                                }
+                            },
+                            "Faster"
+                        )
+                    ]
+                ),
+            ]
+        )
+    };
+}
+
+var paramsSend = [
+    {
+        name: "recipient",
+        type: status.types.TEXT,
+        suggestions: function (params) {
+            return {
+                title: "Send transaction",
+                markup: status.components.chooseContact("Choose recipient", 0)
+            };
+        }
+    },
+    {
+        name: "amount",
+        type: status.types.NUMBER,
+        suggestions: amountParameterBox
+    }
+];
+
 var send = {
     name: "send",
     icon: "money_white",
     color: "#5fc48d",
     title: I18n.t('send_title'),
     description: I18n.t('send_description'),
-    sequentialParams: true,
-    params: [{
-        name: "amount",
-        type: status.types.NUMBER
-    }],
+    params: paramsSend,
     preview: function (params, context) {
         var amountStyle = {
             fontSize: 36,
@@ -150,7 +332,7 @@ var send = {
             )
         };
     },
-    handler: sendTransaction,
+    handler: handleSend,
     validator: validateSend
 };
 

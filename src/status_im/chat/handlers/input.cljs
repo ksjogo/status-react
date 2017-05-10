@@ -25,8 +25,8 @@
               text-splitted  (input-model/split-command-args text)
               new-args       (rest text-splitted)
               new-input-text (input-model/make-input-text text-splitted old-args)]
-          (assoc-in db [:chats chat-id :input-text] new-input-text))
-        (assoc-in db [:chats chat-id :input-text] text)))))
+          (assoc-in db [:chats chat-id :input-text] new-input-text)))
+      (assoc-in db [:chats chat-id :input-text] text))))
 
 (handlers/register-handler
   :add-to-chat-input-text
@@ -65,7 +65,7 @@
 (handlers/register-handler
   :set-command-argument
   (handlers/side-effect!
-    (fn [{:keys [current-chat-id] :as db} [_ [index arg]]]
+    (fn [{:keys [current-chat-id] :as db} [_ [index arg move-to-next?]]]
       (let [command     (-> (get-in db [:chats current-chat-id :input-text])
                             (input-model/split-command-args))
             seq-params? (-> (input-model/selected-chat-command db current-chat-id)
@@ -80,7 +80,7 @@
             (dispatch [:set-chat-input-text (str command-name
                                                  const/spacing-char
                                                  (input-model/join-command-args command-args)
-                                                 const/spacing-char)])))))))
+                                                 (when move-to-next? const/spacing-char))])))))))
 
 (handlers/register-handler
   :chat-input-focus
