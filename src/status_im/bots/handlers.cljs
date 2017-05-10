@@ -31,8 +31,9 @@
 (u/register-handler
   :set-in-bot-db
   (re-frame/after check-subscriptions)
-  (fn [db [_ {:keys [bot path value]}]]
-    (assoc-in db (concat [:bot-db bot] path) value)))
+  (fn [{:keys [current-chat-id] :as db} [_ {:keys [bot path value]}]]
+    (let [bot (or bot current-chat-id)]
+      (assoc-in db (concat [:bot-db bot] path) value))))
 
 (u/register-handler
   :register-bot-subscription

@@ -108,6 +108,10 @@ function text(options, s) {
     return ['text', options].concat(s);
 }
 
+function input(options) {
+    return ['input', options];
+}
+
 function view(options, elements) {
     return ['view', options].concat(elements);
 }
@@ -158,6 +162,13 @@ function validationMessage(titleText, descriptionText) {
     }];
 }
 
+function chooseContact(titleText, argumentIndex) {
+    return ['choose-contact', {
+        title: titleText,
+        index: argumentIndex
+    }];
+}
+
 var status = {
     command: function (h) {
         var command = new Command();
@@ -188,7 +199,11 @@ var status = {
     },
     events: {
         SET_VALUE: 'set-value',
-        SET_COMMAND_ARGUMENT: 'set-command-argument'
+        SET_COMMAND_ARGUMENT: 'set-command-argument',
+        UPDATE_DB: 'set',
+        SET_COMMAND_ARGUMENT_FROM_DB: 'set-command-argument-from-db',
+        SET_VALUE_FROM_DB: 'set-value-from-db',
+        FOCUS_INPUT: 'focus-input'
     },
     actions: {
         WEB_VIEW_BACK: 'web-view-back',
@@ -199,6 +214,7 @@ var status = {
     components: {
         view: view,
         text: text,
+        input: input,
         slider: slider,
         image: image,
         touchable: touchable,
@@ -206,6 +222,7 @@ var status = {
         webView: webView,
         validationMessage: validationMessage,
         bridgedWebView: bridgedWebView,
+        chooseContact: chooseContact,
         subscribe: subscribe,
         dispatch: dispatch
     },

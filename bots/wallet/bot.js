@@ -1,5 +1,245 @@
+function round(n) {
+    return Math.round(n * 100) / 100;
+}
+
+function calculateFee(n, tx) {
+    var estimatedGas = 21000;
+    if (tx !== null) {
+        estimatedGas = web3.eth.estimateGas(tx);
+    }
+
+    return web3.fromWei(web3.eth.gasPrice * Math.pow(2, n - 5) * estimatedGas, "ether");
+}
+
+function calculateGasPrice(n) {
+    return web3.eth.gasPrice * Math.pow(2, n - 5);
+}
+
+status.defineSubscription(
+    "calculatedFee",
+    {value: ["sliderValue"], tx: ["transaction"]},
+    function (params) {
+        return calculateFee(params.value, params.tx);
+    }
+);
+
+function getFeeExplaination(n) {
+    return I18n.t('send_explaination') + I18n.t('send_explaination_' + n);
+}
+
+status.defineSubscription(
+    "feeExplaination",
+    {value: ["sliderValue"]},
+    function(params) {
+        return getFeeExplaination(params.value);
+    }
+)
+
+function amountParameterBox(params, context) {
+    var txData = {
+        to: params["bot-db"]["contact"]["address"],
+        value: web3.toWei(params.args[1]) || 0
+    };
+
+    var sliderValue = params["bot-db"]["sliderValue"] || 5;
+
+    status.setDefaultDb({
+        transaction: txData,
+        calculatedFee: calculateFee(sliderValue, txData),
+        feeExplaination: getFeeExplaination(sliderValue),
+        sliderValue: sliderValue
+    });
+
+    return {
+        title: I18n.t('send_title'),
+        showBack: true,
+        markup: status.components.scrollView(
+            {
+                keyboardShouldPersistTaps: "always"
+            },
+            [status.components.view(
+                {
+                    flex: 1
+                },
+                [
+                    status.components.text(
+                        {
+                            style: {
+                                fontSize: 14,
+                                color: "rgb(147, 155, 161)",
+                                paddingTop: 12,
+                                paddingLeft: 16,
+                                paddingRight: 16,
+                                paddingBottom: 20
+                            }
+                        },
+                        I18n.t('send_specify_amount')
+                    ),
+                    status.components.touchable(
+                        {
+                            onPress: status.components.dispatch([status.events.FOCUS_INPUT, []])
+                        },
+                        status.components.view(
+                            {
+                                flexDirection: "row",
+                                alignItems: "center",
+                                textAlign: "center",
+                                justifyContent: "center"
+                            },
+                            [
+                                status.components.text(
+                                    {
+                                        font: "light",
+                                        style: {
+                                            fontSize: 38,
+                                            marginLeft: 8,
+                                            color: "black"
+                                        }
+                                    },
+                                    params.args[1] || "0.00"
+                                ),
+                                status.components.text(
+                                    {
+                                        font: "light",
+                                        style: {
+                                            fontSize: 38,
+                                            marginLeft: 8,
+                                            color: "rgb(147, 155, 161)"
+                                        }
+                                    },
+                                    I18n.t('eth')
+                                ),
+                            ]
+                        )
+                    ),
+                    status.components.text(
+                        {
+                            style: {
+                                fontSize: 14,
+                                color: "rgb(147, 155, 161)",
+                                paddingTop: 14,
+                                paddingLeft: 16,
+                                paddingRight: 16,
+                                paddingBottom: 5
+                            }
+                        },
+                        I18n.t('send_fee')
+                    ),
+                    status.components.view(
+                        {
+                            flexDirection: "row"
+                        },
+                        [
+                            status.components.text(
+                                {
+                                    style: {
+                                        fontSize: 17,
+                                        color: "black",
+                                        paddingLeft: 16
+                                    }
+                                },
+                                [status.components.subscribe(["calculatedFee"])]
+                            ),
+                            status.components.text(
+                                {
+                                    style: {
+                                        fontSize: 17,
+                                        color: "rgb(147, 155, 161)",
+                                        paddingLeft: 4,
+                                        paddingRight: 4
+                                    }
+                                },
+                                I18n.t('eth')
+                            )
+                        ]
+                    ),
+                    status.components.slider(
+                        {
+                            maximumValue: 10,
+                            value: 5,
+                            minimumValue: 0,
+                            onSlidingComplete: status.components.dispatch(
+                                [status.events.UPDATE_DB, "sliderValue"]
+                            ),
+                            step: 1,
+                            style: {
+                                marginLeft: 16,
+                                marginRight: 16
+                            }
+                        }
+                    ),
+                    status.components.view(
+                        {
+                            flexDirection: "row"
+                        },
+                        [
+                            status.components.text(
+                                {
+                                    style: {
+                                        flex: 1,
+                                        fontSize: 14,
+                                        color: "rgb(147, 155, 161)",
+                                        paddingLeft: 16,
+                                        alignSelf: "flex-start"
+                                    }
+                                },
+                                I18n.t('send_cheaper')
+                            ),
+                            status.components.text(
+                                {
+                                    style: {
+                                        flex: 1,
+                                        fontSize: 14,
+                                        color: "rgb(147, 155, 161)",
+                                        paddingRight: 16,
+                                        alignSelf: "flex-end",
+                                        textAlign: "right"
+                                    }
+                                },
+                                I18n.t('send_faster')
+                            )
+                        ]
+                    ),
+                    status.components.text(
+                        {
+                            style: {
+                                fontSize: 14,
+                                color: "black",
+                                paddingTop: 16,
+                                paddingLeft: 16,
+                                paddingRight: 16,
+                                paddingBottom: 16,
+                                lineHeight: 24
+                            }
+                        },
+                        [status.components.subscribe(["feeExplaination"])]
+                    )
+                ]
+            )]
+        )
+    };
+}
+
+var paramsSend = [
+    {
+        name: "recipient",
+        type: status.types.TEXT,
+        suggestions: function (params) {
+            return {
+                title: I18n.t('send_title'),
+                markup: status.components.chooseContact(I18n.t('send_choose_recipient'), 0)
+            };
+        }
+    },
+    {
+        name: "amount",
+        type: status.types.NUMBER,
+        suggestions: amountParameterBox
+    }
+];
+
 function validateSend(params, context) {
-    if (!context.to) {
+    if (!params["bot-db"]["contact"]["address"]) {
         return {
             markup: status.components.validationMessage(
                 "Wrong address",
@@ -7,7 +247,7 @@ function validateSend(params, context) {
             )
         };
     }
-    if (!params.amount) {
+    if (!params["amount"]) {
         return {
             markup: status.components.validationMessage(
                 I18n.t('validation_title'),
@@ -42,13 +282,15 @@ function validateSend(params, context) {
     }
 
     var balance = web3.eth.getBalance(context.from);
-    var estimatedGas = web3.eth.estimateGas({
-        from: context.from,
-        to: context.to,
-        value: val
-    });
+    var fee = calculateFee(
+        params["bot-db"]["sliderValue"],
+        {
+            to: params["bot-db"]["contact"]["address"],
+            value: val
+        }
+    );
 
-    if (bn(val).plus(bn(estimatedGas)).greaterThan(bn(balance))) {
+    if (bn(val).plus(bn(web3.toWei(fee, "ether"))).greaterThan(bn(balance))) {
         return {
             markup: status.components.validationMessage(
                 I18n.t('validation_title'),
@@ -60,11 +302,14 @@ function validateSend(params, context) {
     }
 }
 
-function sendTransaction(params, context) {
+function handleSend(params, context) {
+    var val = web3.toWei(params["amount"].replace(",", "."), "ether");
+
     var data = {
         from: context.from,
-        to: context.to,
-        value: web3.toWei(params.amount.replace(",", "."), "ether")
+        to: params["bot-db"]["contact"]["address"],
+        value: val,
+        gasPrice: calculateGasPrice(params["bot-db"]["sliderValue"])
     };
 
     try {
@@ -80,11 +325,7 @@ var send = {
     color: "#5fc48d",
     title: I18n.t('send_title'),
     description: I18n.t('send_description'),
-    sequentialParams: true,
-    params: [{
-        name: "amount",
-        type: status.types.NUMBER
-    }],
+    params: paramsSend,
     preview: function (params, context) {
         var amountStyle = {
             fontSize: 36,
@@ -122,7 +363,7 @@ var send = {
                         marginLeft: 7.5
                     }
                 },
-                "ETH"
+                I18n.t('eth')
             )]
         );
 
@@ -150,7 +391,7 @@ var send = {
             )
         };
     },
-    handler: sendTransaction,
+    handler: handleSend,
     validator: validateSend
 };
 

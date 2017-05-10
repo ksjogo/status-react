@@ -81,26 +81,28 @@
    (selected-chat-command db chat-id (get-in db [:chats chat-id :input-text]))))
 
 (defn current-chat-argument-position
-  [{:keys [args] :as command} input-text seq-arguments]
+  [{:keys [args sequential-params] :as command} input-text selection seq-arguments]
   (if command
-    (let [args-count (count args)]
-      (cond
-        (:sequential-params command)
-        (count seq-arguments)
-
-        (= (last input-text) const/spacing-char)
-        args-count
-
-        :default
-        (dec args-count)))
+    (if sequential-params
+      (count seq-arguments)
+      (let [subs-input-text (subs input-text 0 selection)]
+        (if subs-input-text
+          (let [args             (split-command-args subs-input-text)
+                argument-index   (dec (count args))
+                ends-with-space? (text-ends-with-space? subs-input-text)]
+            (if ends-with-space?
+              argument-index
+              (dec argument-index)))
+          -1)))
     -1))
 
 (defn argument-position [{:keys [current-chat-id] :as db} chat-id]
   (let [chat-id       (or chat-id current-chat-id)
         input-text    (get-in db [:chats chat-id :input-text])
         seq-arguments (get-in db [:chats chat-id :seq-arguments])
+        selection     (get-in db [:chat-ui-props chat-id :selection])
         chat-command  (selected-chat-command db chat-id)]
-    (current-chat-argument-position chat-command input-text seq-arguments)))
+    (current-chat-argument-position chat-command input-text selection seq-arguments)))
 
 (defn command-completion
   ([{:keys [current-chat-id] :as db} chat-id]

@@ -25,8 +25,8 @@
               text-splitted  (input-model/split-command-args text)
               new-args       (rest text-splitted)
               new-input-text (input-model/make-input-text text-splitted old-args)]
-          (assoc-in db [:chats chat-id :input-text] new-input-text))
-        (assoc-in db [:chats chat-id :input-text] text)))))
+          (assoc-in db [:chats chat-id :input-text] new-input-text)))
+      (assoc-in db [:chats chat-id :input-text] text))))
 
 (handlers/register-handler
   :add-to-chat-input-text
@@ -65,7 +65,7 @@
 (handlers/register-handler
   :set-command-argument
   (handlers/side-effect!
-    (fn [{:keys [current-chat-id] :as db} [_ [index arg]]]
+    (fn [{:keys [current-chat-id] :as db} [_ [index arg move-to-next?]]]
       (let [command     (-> (get-in db [:chats current-chat-id :input-text])
                             (input-model/split-command-args))
             seq-params? (-> (input-model/selected-chat-command db current-chat-id)
@@ -80,7 +80,7 @@
             (dispatch [:set-chat-input-text (str command-name
                                                  const/spacing-char
                                                  (input-model/join-command-args command-args)
-                                                 const/spacing-char)])))))))
+                                                 (when move-to-next? const/spacing-char))])))))))
 
 (handlers/register-handler
   :chat-input-focus
@@ -112,11 +112,12 @@
 (handlers/register-handler
   :load-chat-parameter-box
   (handlers/side-effect!
-    (fn [{:keys [current-chat-id] :as db} [_ {:keys [name type bot] :as command}]]
+    (fn [{:keys [current-chat-id bot-db] :as db} [_ {:keys [name type bot] :as command}]]
       (let [parameter-index (input-model/argument-position db current-chat-id)]
         (when (and command (> parameter-index -1))
           (let [jail-id (or bot current-chat-id)
                 data    (get-in db [:local-storage current-chat-id])
+                bot-db  (get bot-db jail-id)
                 path    [(if (= :command type) :commands :responses)
                          name
                          :params
@@ -125,7 +126,8 @@
                 args    (-> (get-in db [:chats current-chat-id :input-text])
                             (input-model/split-command-args)
                             (rest))
-                params  {:parameters {:args args}
+                params  {:parameters {:args   args
+                                      :bot-db bot-db}
                          :context    (merge {:data data}
                                             (input-model/command-dependent-context-params command))}]
             (status/call-jail jail-id
@@ -229,7 +231,7 @@
 (handlers/register-handler
   ::request-command-data
   (handlers/side-effect!
-    (fn [{:keys [contacts] :as db}
+    (fn [{:keys [contacts bot-db] :as db}
          [_ {{:keys [command metadata args] :as c} :command
              :keys                                 [message-id chat-id jail-id data-type after]}]]
       (let [{:keys [dapp? dapp-url name]} (get contacts chat-id)
@@ -238,6 +240,7 @@
                                    (when dapp?
                                      {:url  (i18n/get-contact-translated chat-id :dapp-url dapp-url)
                                       :name (i18n/get-contact-translated chat-id :name name)}))
+            bot-db          (get bot-db chat-id)
             params          (input-model/args->params c)
             command-message {:command    command
                              :params     params
@@ -250,7 +253,7 @@
                              :chat-id      chat-id
                              :jail-id      jail-id
                              :content      {:command (:name command)
-                                            :params  (assoc params :metadata metadata)
+                                            :params  (assoc params :metadata metadata :bot-db bot-db)
                                             :type    (:type command)}
                              :on-requested #(after command-message %)}]
         (dispatch [:request-command-data request-data data-type])))))
@@ -332,3 +335,30 @@
   (fn [{:keys [current-chat-id] :as db} [_ text chat-id]]
     (let [chat-id (or chat-id current-chat-id)]
       (assoc-in db [:chats chat-id :seq-argument-input-text] text))))
+
+(handlers/register-handler
+  :update-text-selection
+  (handlers/side-effect!
+    (fn [{:keys [current-chat-id] :as db} [_ selection]]
+      (let [input-text (get-in db [:chats current-chat-id :input-text])
+            command    (input-model/selected-chat-command db current-chat-id input-text)]
+        (when (and (= selection (+ 2 (count (get-in command [:command :name]))))
+                   (get-in command [:command :sequential-params]))
+          (dispatch [:chat-input-focus :seq-input-ref]))
+        (dispatch [:set-chat-ui-props {:selection selection}])
+        (dispatch [:load-chat-parameter-box (:command command)])))))
+
+(handlers/register-handler
+  :select-argument
+  (handlers/side-effect!
+    (fn [{:keys [chat-ui-props current-chat-id] :as db} _]
+      (let [arg-pos (dec (input-model/argument-position db current-chat-id))]
+        (when (>= arg-pos 0)
+          (let [input-text (get-in db [:chats current-chat-id :input-text])
+                new-sel    (->> (input-model/split-command-args input-text)
+                                (take (+ 2 arg-pos))
+                                (input-model/join-command-args)
+                                (count))
+                ref        (get-in chat-ui-props [current-chat-id :input-ref])]
+            (.setNativeProps ref (clj->js {:selection {:start new-sel :end new-sel}}))
+            (dispatch [:update-text-selection new-sel])))))))
