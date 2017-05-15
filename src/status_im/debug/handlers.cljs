@@ -54,17 +54,17 @@
 
 (register-handler :debug-add-dapp
   (u/side-effect!
-    (fn [{:keys [contacts]} [_ {:keys [name whisper-identity dapp-url] :as dapp-data}]]
+    (fn [{:keys [contacts]} [_ {:keys [name whisper-identity] :as dapp-data}]]
       (when (and name
                  whisper-identity
-                 dapp-url
                  (or (not (get contacts whisper-identity))
                      (get-in contacts [whisper-identity :debug?])))
         (let [dapp (merge dapp-data {:dapp?  true
                                      :debug? true})]
           (dispatch [:add-chat whisper-identity {:name   name
                                                  :debug? true}])
-          (dispatch [:add-contacts [dapp]]))))))
+          (dispatch [:add-contacts [dapp]])
+          (dispatch [:open-chat-with-contact dapp]))))))
 
 (register-handler :debug-remove-dapp
   (u/side-effect!
