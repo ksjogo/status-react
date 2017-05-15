@@ -69,7 +69,7 @@
   (when status
     (call-module #(.moveToInternalStorage status on-result))))
 
-(defn start-node [on-result]
+(defn start-node [config on-result]
   (when status
     (call-module #(.startNode status on-result))))
 
@@ -115,7 +115,7 @@
   (when status
     (call-module #(.recoverAccount status passphrase password on-result))))
 
-(defn login [address password on-result]
+(defn login [address password config on-result]
   (when status
     (call-module #(.login status address password on-result))))
 
