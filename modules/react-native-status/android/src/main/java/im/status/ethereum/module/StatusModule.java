@@ -127,11 +127,9 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
             try {
                 final String chaindDataFolderPath = dataFolder + "/StatusIM/lightchaindata";
                 final File lightChainFolder = new File(chaindDataFolderPath);
-                if (lightChainFolder.isDirectory())
-                {
+                if (lightChainFolder.isDirectory()) {
                     String[] children = lightChainFolder.list();
-                    for (int i = 0; i < children.length; i++)
-                    {
+                    for (int i = 0; i < children.length; i++) {
                         new File(lightChainFolder, children[i]).delete();
                     }
                 }
@@ -142,22 +140,50 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
             }
         }
 
-        String config;
+        String testnetDataDir = root + "/ethereum/testnet";
+        String oldKeystoreDir = testnetDataDir + "/keystore";
+        String newKeystoreDir = root + "/keystore";
+        final File oldKeystore = new File(oldKeystoreDir);
+        if (!oldKeystore.exists()) {
+            try {
+                final File newKeystore = new File(newKeystoreDir);
+                copyDirectory(oldKeystore, newKeystore);
+
+                if (oldKeystore.isDirectory()) {
+                    String[] children = oldKeystore.list();
+                    for (int i = 0; i < children.length; i++) {
+                        new File(oldKeystoreDir, children[i]).delete();
+                    }
+                }
+                oldKeystore.delete();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        int dev = 0;
+        if (this.debug) {
+            dev = 1;
+        }
+
+        String config = Statusgo.GenerateConfig(testnetDataDir, 3, dev);
         try {
-            JSONObject jsonConfig = new JSONObject(defaultConfig);
+            JSONObject customConfig = new JSONObject(defaultConfig);
+            JSONObject jsonConfig = new JSONObject(config);
             jsonConfig.put("LogEnabled", this.debug);
             jsonConfig.put("LogFile", "geth.log");
             jsonConfig.put("LogLevel", "DEBUG");
-            jsonConfig.put("DataDir", currentActivity.getApplicationInfo().dataDir + jsonConfig.get("DataDir"));
-            jsonConfig.put("KeyStoreDir", dataFolder + "/keystore");
+            jsonConfig.put("DataDir", root + customConfig.get("DataDir"));
+            jsonConfig.put("NetworkId", customConfig.get("NetworkId"));
+            jsonConfig.put("KeyStoreDir", newKeystoreDir);
 
             config = jsonConfig.toString();
         } catch (JSONException e) {
             Log.d(TAG, "Something went wrong " + e.getMessage());
             Log.d(TAG, "Default configuration will be used");
-
-            config = defaultConfig;
         }
+
+        Log.d(TAG, "Node config " + config);
 
         Statusgo.StartNode(config);
         Log.d(TAG, "Geth node started");
@@ -265,6 +291,12 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
     }
 
     @ReactMethod
+    public void stopNode() {
+        Log.d(TAG, "stopNode");
+        Statusgo.StopNode();
+    }
+
+    @ReactMethod
     public void startNodeRPCServer() {
         Log.d(TAG, "startNodeRPCServer");
         final Activity activity = getCurrentActivity();
@@ -302,7 +334,7 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
     }
 
     @ReactMethod
-    public void login(final String address, final String password, final String config, final Callback callback) {
+    public void login(final String address, final String password, final Callback callback) {
         Log.d(TAG, "login");
         if (!checkAvailability()) {
             callback.invoke(false);
@@ -311,15 +343,28 @@ class StatusModule extends ReactContextBaseJavaModule implements LifecycleEventL
         Thread thread = new Thread() {
             @Override
             public void run() {
-                doStartNode(config);
-
                 String result = Statusgo.Login(address, password);
-
                 callback.invoke(result);
             }
         };
 
         thread.start();
+    }
+
+    @ReactMethod
+    public void verifyAccountPassword(String address, String password, Callback callback) {
+        Log.d(TAG, "VerifyAccountPassword");
+        String root = getCurrentActivity().getApplicationInfo().dataDir;
+        String keystore = root + "/keystore";
+
+        long start = System.currentTimeMillis();
+        String res = Statusgo.VerifyAccountPassword(keystore, address, password);
+        long end = System.currentTimeMillis();
+        long diff = end - start;
+
+        Log.d(TAG, "VerifyAccountPassword result: " + res + " time " + diff);
+
+        callback.invoke(res);
     }
 
     @ReactMethod

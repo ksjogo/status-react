@@ -44,4 +44,4 @@
   (u/side-effect!
     (fn [{:keys [current-account-id]} [_ network]]
       (dispatch [:account-update {:network network}])
-      (dispatch [:navigate-to :accounts]))))
+      (dispatch [:navigate-to-clean :accounts]))))

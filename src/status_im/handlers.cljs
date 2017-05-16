@@ -123,13 +123,13 @@
   (log/debug "Started Node")
   (dispatch [:set :current-network network]))
 
-(defn move-to-internal-storage [db config]
+(defn move-to-internal-storage [network config]
   (status/move-to-internal-storage
     (fn []
       (status/start-node
         config
         (fn [result]
-          (node-started db result))))))
+          (node-started network result))))))
 
 (register-handler :initialize-geth
   (u/side-effect!
@@ -140,9 +140,9 @@
             (if should-move?
               (dispatch [:request-permissions
                          [:read-external-storage]
-                         #(move-to-internal-storage db config')
+                         #(move-to-internal-storage network config')
                          #(dispatch [:move-to-internal-failure-message])])
-              (status/start-node config' (fn [result] (node-started network result))))))))))
+              (status/start-node config' #(node-started network %)))))))))
 
 (register-handler :webview-geo-permissions-granted
   (u/side-effect!
@@ -173,8 +173,10 @@
     (assoc db :status-module-initialized? true)))
 
 (register-handler :status-node-started!
-  (fn [db]
-    (assoc db :status-node-started? true)))
+  (fn [{:keys [on-node-started] :as db}]
+    (when on-node-started (on-node-started))
+    (assoc db :status-node-started? true
+              :on-node-started nil)))
 
 (register-handler :crypt-initialized
   (u/side-effect!

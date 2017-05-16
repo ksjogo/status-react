@@ -71,7 +71,11 @@
 
 (defn start-node [config on-result]
   (when status
-    (call-module #(.startNode status on-result))))
+    (call-module #(.startNode status config on-result))))
+
+(defn stop-node []
+  (when status
+    (call-module #(.stopNode status))))
 
 (defn stop-rpc-server []
   (when status
@@ -115,9 +119,23 @@
   (when status
     (call-module #(.recoverAccount status passphrase password on-result))))
 
-(defn login [address password config on-result]
+(defn wrap-callback-with-stopwatch
+  [message callback]
+  (let [start (.now js/Date)]
+    (fn [& args]
+      (let [stop (.now js/Date)]
+        (log/debug :stopwatch message (str (- stop start) "ms")))
+      (apply callback args))))
+
+(defn login [address password config restart? on-result]
   (when status
-    (call-module #(.login status address password on-result))))
+    (let [callback (wrap-callback-with-stopwatch :login on-result)]
+      (call-module #(.login status address password callback)))))
+
+(defn verify-account [address password callback]
+  (let [callback' (wrap-callback-with-stopwatch :verify-account callback)]
+    (when status
+      (call-module (.verifyAccountPassword status address password callback')))))
 
 (defn complete-transactions
   [hashes password callback]
