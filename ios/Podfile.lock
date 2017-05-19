@@ -1,12 +1,19 @@
 PODS:
   - Instabug (6.0.4)
+  - RCTMapboxGL (5.1.0)
 
 DEPENDENCIES:
   - Instabug (~> 6.0.0)
+  - RCTMapboxGL (from `../node_modules/react-native-mapbox-gl/ios`)
+
+EXTERNAL SOURCES:
+  RCTMapboxGL:
+    :path: ../node_modules/react-native-mapbox-gl/ios
 
 SPEC CHECKSUMS:
   Instabug: 7431c30f6e8883b2e6a9ce4b922ed51cbb25ad19
+  RCTMapboxGL: 89530d53188546e8e78999dfdc039d1b4c7041ca
 
-PODFILE CHECKSUM: da0b8d375a7fe107abe5b59bce9340e2fd528084
+PODFILE CHECKSUM: 8f8009c3268de43f4203a7f2293c9a41bca287b6
 
 COCOAPODS: 1.1.1

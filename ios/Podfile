@@ -7,6 +7,7 @@ target 'StatusIm' do
 
   # Pods for StatusIm
   pod 'Instabug', '~> 6.0.0'
+  pod 'RCTMapboxGL', :path => '../node_modules/react-native-mapbox-gl/ios'
 
   target 'StatusImTests' do
     inherit! :search_paths
