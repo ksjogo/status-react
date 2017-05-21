@@ -32,6 +32,9 @@ function superSuggestion(params, context) {
     var balance = parseFloat(web3.fromWei(web3.eth.getBalance(context.from), "ether"));
     var defaultSliderValue = balance / 2;
 
+    console.log("WOW");
+    console.error("Oh, it's an error!");
+
     var view = ["view", {},
         ["text", {}, "Balance " + balance + " ETH"],
         ["text", {}, ["subscribe", ["doubledValue"]]],
