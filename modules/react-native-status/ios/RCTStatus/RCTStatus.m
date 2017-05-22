@@ -2,6 +2,48 @@
 #import "React/RCTBridge.h"
 #import "React/RCTEventDispatcher.h"
 #import <Statusgo/Statusgo.h>
+@import Instabug;
+
+@interface NSDictionary (BVJSONString)
+-(NSString*) bv_jsonStringWithPrettyPrint:(BOOL) prettyPrint;
+@end
+
+@implementation NSDictionary (BVJSONString)
+
+-(NSString*) bv_jsonStringWithPrettyPrint:(BOOL) prettyPrint {
+    NSError *error;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:self
+                                                       options:(NSJSONWritingOptions)    (prettyPrint ? NSJSONWritingPrettyPrinted : 0)
+                                                         error:&error];
+    
+    if (! jsonData) {
+        NSLog(@"bv_jsonStringWithPrettyPrint: error: %@", error.localizedDescription);
+        return @"{}";
+    } else {
+        return [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    }
+}
+@end
+
+@interface NSArray (BVJSONString)
+- (NSString *)bv_jsonStringWithPrettyPrint:(BOOL)prettyPrint;
+@end
+
+@implementation NSArray (BVJSONString)
+-(NSString*) bv_jsonStringWithPrettyPrint:(BOOL) prettyPrint {
+    NSError *error;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:self
+                                                       options:(NSJSONWritingOptions) (prettyPrint ? NSJSONWritingPrettyPrinted : 0)
+                                                         error:&error];
+    
+    if (! jsonData) {
+        NSLog(@"bv_jsonStringWithPrettyPrint: error: %@", error.localizedDescription);
+        return @"[]";
+    } else {
+        return [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    }
+}
+@end
 
 static bool isStatusInitialized;
 static RCTBridge *bridge;
@@ -161,10 +203,25 @@ RCT_EXPORT_METHOD(startNode:(RCTResponseSenderBlock)onResultCallback) {
         }else
             NSLog(@"folderName: %@", folderName);
 
+        char *configChars = GenerateConfig([folderName.path UTF8String], 3);
+        NSString *config = [NSString stringWithUTF8String: configChars];
+        NSData *configData = [config dataUsingEncoding:NSUTF8StringEncoding];
+        NSDictionary *resultingConfigJson = [NSJSONSerialization JSONObjectWithData:configData options:NSJSONReadingMutableContainers error:nil];
+        [resultingConfigJson setValue:[NSNumber numberWithBool:YES] forKey:@"LogEnabled"];
+        [resultingConfigJson setValue:@"geth.log" forKey:@"LogFile"];
+        [resultingConfigJson setValue:@"DEBUG" forKey:@"LogLevel"];
+        NSString *resultingConfig = [resultingConfigJson bv_jsonStringWithPrettyPrint:NO];
+        NSURL *logUrl = [folderName URLByAppendingPathComponent:@"geth.log"];
+        if([[NSFileManager defaultManager] fileExistsAtPath:logUrl.path]) {
+            [[NSFileManager defaultManager] removeItemAtPath:logUrl.path
+                                                       error:nil];
+        }
+#ifndef DEBUG
+        [Instabug addFileAttachmentWithURL:[folderName URLByAppendingPathComponent:@"geth.log"]];
+#endif
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
                        ^(void) {
-            char *config = GenerateConfig([folderName.path UTF8String], 3);
-            StartNode(config);
+            StartNode((char *) [resultingConfig UTF8String]);
         });
         onResultCallback(@[[NSNull null]]);
         //Screen lock notifications
